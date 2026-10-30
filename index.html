@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CozyNFC - Tag Management Prototype</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700&family=Fraunces:wght@600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config={theme:{extend:{fontFamily:{sans:['Nunito','sans-serif'],display:['"Baloo 2"','Nunito','sans-serif']},colors:{brand:{50:'#f5f3ff',100:'#ede9fe',200:'#ddd6fe',300:'#c4b5fd',500:'#8b5cf6',600:'#7c3aed',700:'#6d28d9',900:'#3b1f5e'},yarn:{100:'#ffe4e9',500:'#e5607a'}}}}}
+</script>
+<style>
+body{background-color:#f3eff8;background-image:repeating-linear-gradient(60deg,rgba(124,58,237,.045) 0 2px,transparent 2px 7px),repeating-linear-gradient(-60deg,rgba(124,58,237,.045) 0 2px,transparent 2px 7px);color:#2a2036}
+.seam{border:2px dashed #c4b5fd;border-radius:1rem;background:#fff;box-shadow:inset 0 0 0 4px #fff}
+.seam.on{border-color:#7c3aed;background:#f5f3ff;box-shadow:inset 0 0 0 4px #f5f3ff}
+.phone{border:8px solid #3b1f5e;border-radius:2.5rem;overflow:hidden;position:relative;background:#fff;transition:transform .3s,box-shadow .3s}
+.phone.tapping{transform:translateY(-10px) scale(1.04);box-shadow:0 0 40px rgba(139,92,246,.45)}
+.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:40%;height:24px;background:#3b1f5e;border-radius:0 0 12px 12px;z-index:5}
+.pulse{animation:pr 1.5s infinite}
+@keyframes pr{0%{box-shadow:0 0 0 0 rgba(139,92,246,.6)}70%{box-shadow:0 0 0 14px rgba(139,92,246,0)}100%{box-shadow:0 0 0 0 rgba(139,92,246,0)}}
+.t-lavender{--bg:#f5f3ff;--fg:#4c1d95;--bb:#fff;--bf:#4c1d95}
+.t-vintage{--bg:#fbf6ec;--fg:#3e3328;--bb:#fff;--bf:#3e3328;font-family:Fraunces,serif}
+.t-dark{--bg:#1c1917;--fg:#fafaf9;--bb:#3b3330;--bf:#fafaf9}
+#pv-profile{background:var(--bg);color:var(--fg)}
+.pbtn{background:var(--bb);color:var(--bf);border:1px solid rgba(128,128,128,.35)}
+.sw[aria-pressed=true]{box-shadow:0 0 0 2px #fff,0 0 0 4px #7c3aed}
+@media (prefers-reduced-motion:reduce){.pulse{animation:none}.phone{transition:none}}
+</style>
+</head>
+<body class="min-h-screen lg:h-screen lg:overflow-hidden font-sans">
+<div class="flex flex-col lg:h-screen">
+
+<div class="bg-brand-900 text-brand-50 text-sm py-2 px-4 flex justify-between items-center">
+  <span><i class="fas fa-flask mr-2 text-brand-300"></i>Prototype: tags save in this browser only</span>
+  <button onclick="openM('m-scope')" class="underline text-brand-200 hover:text-white">What's included</button>
+</div>
+
+<div class="flex flex-1 min-h-0">
+<aside class="hidden md:flex w-56 shrink-0 flex-col justify-between bg-white/80 border-r border-brand-100">
+  <div>
+    <div class="h-16 flex items-center px-5 gap-2 font-display text-xl text-brand-900"><i class="fas fa-heart text-yarn-500"></i>CozyNFC</div>
+    <nav class="p-3 space-y-1 text-sm font-semibold">
+      <a href="#" aria-current="page" class="flex items-center gap-3 px-3 py-2 rounded-xl bg-brand-100 text-brand-700"><i class="fas fa-tags w-5 text-center"></i>My items</a>
+      <span aria-disabled="true" class="flex items-center gap-3 px-3 py-2 text-stone-400"><i class="fas fa-border-all w-5 text-center"></i>Templates<em class="ml-auto text-xs not-italic">soon</em></span>
+      <span aria-disabled="true" class="flex items-center gap-3 px-3 py-2 text-stone-400"><i class="fas fa-chart-simple w-5 text-center"></i>Tap log<em class="ml-auto text-xs not-italic">soon</em></span>
+    </nav>
+  </div>
+  <div class="p-4 flex items-center gap-3 text-sm">
+    <div class="w-8 h-8 rounded-full bg-brand-200 text-brand-700 font-bold flex items-center justify-center">D</div>
+    <div><div class="font-semibold">Demo account</div><div class="text-xs text-stone-500">Free tier</div></div>
+  </div>
+</aside>
+
+<main class="flex-1 min-w-0 min-h-0 flex flex-col lg:flex-row">
+  <section class="flex-1 min-w-0 lg:overflow-y-auto p-4 md:p-8">
+    <div class="max-w-2xl mx-auto">
+      <div class="md:hidden font-display text-xl text-brand-900 mb-4"><i class="fas fa-heart text-yarn-500 mr-2"></i>CozyNFC</div>
+      <header class="mb-6 flex justify-between items-end gap-3">
+        <div>
+          <h1 class="font-display text-3xl text-brand-900 leading-tight">Your tagged items</h1>
+          <p class="text-stone-600 text-sm">Pick what happens when someone taps your card or crochet piece.</p>
+        </div>
+        <button onclick="newTag()" class="shrink-0 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-xl text-sm font-bold"><i class="fas fa-plus mr-1"></i>Add item</button>
+      </header>
+
+      <div id="tag-list" class="space-y-3 mb-8"></div>
+
+      <div id="editor" class="seam p-6 hidden">
+        <div class="flex justify-between items-start gap-3 mb-5">
+          <div>
+            <h2 class="font-display text-xl text-brand-900">Editing <span id="edit-title"></span></h2>
+            <span id="edit-id" class="text-xs font-mono text-stone-500"></span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span id="dirty" class="hidden text-xs font-bold text-yarn-500">Unsaved changes</span>
+            <button type="button" onclick="del()" class="text-sm text-stone-500 hover:text-yarn-500"><i class="fas fa-trash mr-1"></i>Delete</button>
+          </div>
+        </div>
+
+        <form id="form" onsubmit="event.preventDefault();save()" class="space-y-5">
+          <div class="grid sm:grid-cols-3 gap-4">
+            <div class="sm:col-span-2">
+              <label for="f-name" class="block text-sm font-bold mb-1">Item name</label>
+              <input id="f-name" class="w-full border border-stone-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500" placeholder="e.g. Lavender PVC card, Amigurumi keychain">
+            </div>
+            <div>
+              <label for="f-kind" class="block text-sm font-bold mb-1">Item type</label>
+              <select id="f-kind" class="w-full border border-stone-300 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500">
+                <option value="card">PVC card</option><option value="crochet">Crochet item</option>
+              </select>
+            </div>
+          </div>
+
+          <fieldset>
+            <legend class="text-sm font-bold mb-2">When someone taps it</legend>
+            <div class="grid grid-cols-2 gap-3">
+              <label class="cursor-pointer"><input type="radio" name="rt" value="redirect" class="peer sr-only">
+                <div class="p-3 border-2 border-stone-200 rounded-xl text-center bg-white peer-checked:border-brand-500 peer-checked:bg-brand-50 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-500"><i class="fas fa-arrow-up-right-from-square text-lg mb-1"></i><div class="text-sm font-bold">Send to a link</div></div></label>
+              <label class="cursor-pointer"><input type="radio" name="rt" value="profile" class="peer sr-only">
+                <div class="p-3 border-2 border-stone-200 rounded-xl text-center bg-white peer-checked:border-brand-500 peer-checked:bg-brand-50 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-500"><i class="fas fa-id-badge text-lg mb-1"></i><div class="text-sm font-bold">Show my card</div></div></label>
+            </div>
+          </fieldset>
+
+          <div id="cfg-redirect">
+            <label for="f-url" class="block text-sm font-bold mb-1">Link to open</label>
+            <div class="flex">
+              <span class="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-stone-300 bg-stone-50 text-stone-500 text-sm">https://</span>
+              <input id="f-url" class="flex-1 min-w-0 border border-stone-300 rounded-r-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500" placeholder="linkedin.com/in/username">
+            </div>
+            <p class="text-xs text-stone-500 mt-1">You can change this any time. The item itself never needs rewriting.</p>
+          </div>
+
+          <div id="cfg-profile" class="space-y-4">
+            <div>
+              <label for="f-pname" class="block text-sm font-bold mb-1">Display name</label>
+              <input id="f-pname" class="w-full border border-stone-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500">
+            </div>
+            <div>
+              <label for="f-bio" class="block text-sm font-bold mb-1">Bio or role</label>
+              <textarea id="f-bio" rows="2" class="w-full border border-stone-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+            </div>
+            <div>
+              <span class="block text-sm font-bold mb-2">Card style</span>
+              <div class="flex gap-3">
+                <button type="button" class="sw w-9 h-9 rounded-full bg-brand-100 border-2 border-brand-500" aria-label="Lavender style" onclick="theme('lavender');touch()"></button>
+                <button type="button" class="sw w-9 h-9 rounded-full bg-[#fbf6ec] border-2 border-[#3e3328]" aria-label="Vintage style" onclick="theme('vintage');touch()"></button>
+                <button type="button" class="sw w-9 h-9 rounded-full bg-stone-900 border-2 border-stone-600" aria-label="Dark style" onclick="theme('dark');touch()"></button>
+              </div>
+              <input type="hidden" id="f-theme" value="lavender">
+            </div>
+            <div>
+              <label for="f-link" class="block text-sm font-bold mb-1">Main link (portfolio, GitHub...)</label>
+              <input id="f-link" class="w-full border border-stone-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500" placeholder="my-portfolio.com">
+            </div>
+          </div>
+
+          <p id="err" role="alert" class="text-sm font-bold text-yarn-500"></p>
+          <div class="flex justify-between items-center pt-4 border-t border-brand-100">
+            <button type="button" onclick="encode()" class="text-brand-600 hover:bg-brand-50 font-bold text-sm px-3 py-2 rounded-xl"><i class="fas fa-wifi mr-2"></i>Write to item</button>
+            <button type="submit" class="bg-brand-900 hover:bg-brand-700 text-white px-5 py-2 rounded-xl text-sm font-bold">Save changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section class="lg:w-96 shrink-0 bg-white/60 border-t lg:border-t-0 lg:border-l border-brand-100 p-6 flex flex-col items-center justify-center">
+    <h3 class="font-display text-lg text-brand-900 mb-4">What people see after a tap</h3>
+    <div id="phone" class="phone w-72 h-[540px] flex flex-col">
+      <div class="notch"></div>
+      <div class="bg-brand-50 pt-8 pb-2 px-4 border-b border-brand-100">
+        <div class="bg-white rounded-lg text-[11px] text-stone-500 py-1.5 text-center font-mono"><i class="fas fa-lock text-[8px] mr-1"></i><span id="pv-url">cozynfc.io/t/...</span></div>
+      </div>
+      <div class="flex-1 overflow-y-auto">
+        <div id="pv-empty" class="h-full flex flex-col items-center justify-center text-stone-500 p-6 text-center">
+          <i class="fas fa-heart text-3xl text-yarn-500 mb-3"></i>
+          <p class="text-sm">Choose an item on the left and its tap page shows up here.</p>
+        </div>
+        <div id="pv-redirect" class="hidden h-full flex-col items-center justify-center bg-stone-50 p-6 text-center">
+          <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-4 text-brand-500 pulse"><i class="fas fa-paper-plane"></i></div>
+          <h4 class="font-bold text-sm mb-1">Opening your link...</h4>
+          <p class="text-xs text-stone-500 break-all" id="pv-rurl"></p>
+        </div>
+        <div id="pv-profile" class="hidden flex-col items-center text-center p-6 min-h-full">
+          <div class="w-20 h-20 mt-6 mb-4 rounded-full bg-black/10 flex items-center justify-center"><i class="fas fa-user text-3xl opacity-50"></i></div>
+          <h4 class="font-bold text-xl mb-1 break-words max-w-full" id="pv-name"></h4>
+          <p class="text-sm opacity-80 mb-6 px-2 break-words max-w-full" id="pv-bio"></p>
+          <div class="w-full space-y-3">
+            <a id="pv-link" target="_blank" rel="noopener noreferrer" class="pbtn block w-full py-3 rounded-xl font-bold text-sm"><i class="fas fa-link mr-2"></i>Visit my link</a>
+            <button type="button" onclick="vcard()" class="pbtn block w-full py-3 rounded-xl font-bold text-sm"><i class="fas fa-address-card mr-2"></i>Save contact</button>
+          </div>
+          <div class="mt-auto pt-8 text-[11px] opacity-60">Made with CozyNFC</div>
+        </div>
+      </div>
+    </div>
+    <button onclick="tap()" class="mt-6 text-sm font-bold text-brand-700 bg-brand-100 hover:bg-brand-200 px-4 py-2 rounded-full"><i class="fas fa-rss mr-2"></i>Simulate a tap</button>
+  </section>
+</main>
+</div>
+</div>
+
+<div id="m-enc" role="dialog" aria-modal="true" aria-labelledby="enc-h" class="hidden fixed inset-0 z-50 bg-brand-900/50 items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-sm w-full p-6 text-center">
+    <div id="enc-1">
+      <div class="w-20 h-20 mx-auto bg-brand-50 rounded-full flex items-center justify-center mb-4 pulse"><i class="fas fa-wifi text-3xl text-brand-500"></i></div>
+      <h3 id="enc-h" class="font-display text-xl mb-2">Hold your item to the phone</h3>
+      <p class="text-sm text-stone-600 mb-1">Writing <span id="enc-url" class="font-mono"></span></p>
+      <p id="enc-mode" class="text-xs text-stone-500 mb-5"></p>
+      <button onclick="closeM('m-enc')" class="text-sm font-bold text-stone-600">Cancel</button>
+    </div>
+    <div id="enc-2" class="hidden">
+      <div class="w-20 h-20 mx-auto bg-green-50 rounded-full flex items-center justify-center mb-4"><i class="fas fa-check text-3xl text-green-600"></i></div>
+      <h3 class="font-display text-xl mb-2">Item is linked</h3>
+      <p class="text-sm text-stone-600 mb-2">Tapping it now opens this item's page.</p>
+      <p class="text-xs text-stone-500 mb-5">Before you hand out real tags, lock them so nobody else can overwrite the link.</p>
+      <button onclick="closeM('m-enc')" class="w-full bg-brand-900 text-white py-2 rounded-xl text-sm font-bold">Done</button>
+    </div>
+  </div>
+</div>
+
+<div id="m-scope" role="dialog" aria-modal="true" aria-labelledby="sc-h" class="hidden fixed inset-0 z-50 bg-brand-900/50 items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-xl w-full max-h-[90vh] flex flex-col">
+    <div class="p-5 border-b border-brand-100 flex justify-between items-center"><h2 id="sc-h" class="font-display text-xl">What this prototype covers</h2><button onclick="closeM('m-scope')" aria-label="Close" class="text-stone-500"><i class="fas fa-times"></i></button></div>
+    <div class="p-5 overflow-y-auto text-sm space-y-4">
+      <div><h3 class="font-bold mb-1 text-green-700">Working now</h3><ul class="list-disc pl-5 space-y-1">
+        <li>Manage PVC cards and crochet items in one dashboard</li>
+        <li>Send to a link, or show a hosted profile card with three styles</li>
+        <li>Save contact downloads a real .vcf file</li>
+        <li>Write to item: real on Android Chrome, simulated elsewhere</li>
+        <li>A simple tap counter per item; items save in this browser</li></ul></div>
+      <div><h3 class="font-bold mb-1 text-yarn-500">Planned for later</h3><ul class="list-disc pl-5 space-y-1">
+        <li>Accounts, paid subscriptions and payments</li>
+        <li>Drag-and-drop profile builder</li>
+        <li>Tap analytics (locations, trends)</li>
+        <li>Bulk ordering tools for organizations</li></ul></div>
+    </div>
+    <div class="p-4 border-t border-brand-100 text-center"><button onclick="closeM('m-scope')" class="bg-brand-600 hover:bg-brand-700 text-white px-6 py-2 rounded-xl font-bold">Got it</button></div>
+  </div>
+</div>
+
+<div id="toast" role="status" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-brand-900 text-white text-sm px-4 py-2 rounded-full opacity-0 pointer-events-none transition-opacity z-[70]"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const KEY='cozynfc-v2';
+const seed=[
+ {id:'TAG-1092',name:'Lavender PVC card',kind:'card',type:'profile',url:'',taps:12,profile:{name:'Alex Designer',bio:'UI/UX designer crafting cozy digital spaces.',theme:'lavender',link:'https://dribbble.com/alex'}},
+ {id:'TAG-8841',name:'Crochet heart mixtape',kind:'crochet',type:'redirect',url:'spotify.com/playlist/lofi-beats',taps:5,profile:{name:'',bio:'',theme:'lavender',link:''}},
+ {id:'TAG-3307',name:'Desk buddy plushie',kind:'crochet',type:'profile',url:'',taps:3,profile:{name:'Mika Dev',bio:'Full-stack developer. Tap my buddy for my work.',theme:'vintage',link:'https://github.com/mika'}}
+];
+let tags=load(),cur=null,dirty=false,encT=null,encAc=null,tt=null;
+
+function load(){try{const r=localStorage.getItem(KEY);if(r)return JSON.parse(r)}catch(e){}return JSON.parse(JSON.stringify(seed))}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(tags))}catch(e){}}
+function safeUrl(s){s=(s||'').trim();if(!s)return null;const http=/^https?:\/\//i.test(s);if(/^[a-z][a-z0-9+.-]*:/i.test(s)&&!http)return null;try{const u=new URL(http?s:'https://'+s);return u.hostname.includes('.')?u.href:null}catch(e){return null}}
+function toast(m){const t=$('toast');t.textContent=m;t.classList.remove('opacity-0');clearTimeout(tt);tt=setTimeout(()=>t.classList.add('opacity-0'),1900)}
+function setDirty(v){dirty=v;$('dirty').classList.toggle('hidden',!v)}
+
+function renderList(){
+ $('tag-list').innerHTML=tags.length?tags.map(t=>{
+  const c=t.kind==='crochet';
+  return `<button type="button" data-id="${esc(t.id)}" class="seam ${t.id===cur?'on':''} w-full p-3 flex items-center gap-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
+   <span class="w-11 h-11 rounded-full shrink-0 flex items-center justify-center ${c?'bg-yarn-100 text-yarn-500':'bg-brand-100 text-brand-600'}"><i class="fas ${c?'fa-heart':'fa-id-card'}"></i></span>
+   <span class="flex-1 min-w-0"><span class="block font-bold truncate">${esc(t.name)}</span>
+    <span class="text-xs text-stone-500">${c?'Crochet item':'PVC card'}, ${t.type==='redirect'?'sends to a link':'shows a card'}</span></span>
+   <span class="text-right text-xs text-stone-500 shrink-0"><b class="block text-base text-brand-900">${t.taps||0}</b>taps</span></button>`}).join('')
+  :'<p class="seam p-6 text-center text-stone-600">No items yet. Add your first card or crochet piece.</p>';
+}
+$('tag-list').onclick=e=>{const b=e.target.closest('[data-id]');if(b)select(b.dataset.id)};
+
+function newTag(){
+ if(dirty&&!confirm('Discard unsaved changes?'))return;
+ let id;do{id='TAG-'+Math.floor(1000+Math.random()*9000)}while(tags.some(t=>t.id===id));
+ tags.push({id,name:'New item',kind:'card',type:'redirect',url:'',taps:0,profile:{name:'',bio:'',theme:'lavender',link:''}});
+ persist();select(id,true);
+}
+function select(id,force){
+ if(dirty&&!force&&!confirm('Discard unsaved changes?'))return;
+ const t=tags.find(x=>x.id===id);if(!t)return;
+ cur=id;setDirty(false);
+ $('editor').classList.remove('hidden');
+ $('edit-title').textContent=t.name;$('edit-id').textContent=t.id;
+ $('f-name').value=t.name;$('f-kind').value=t.kind;$('f-url').value=t.url;
+ $('f-pname').value=t.profile.name;$('f-bio').value=t.profile.bio;$('f-link').value=t.profile.link;
+ document.querySelector(`input[name=rt][value=${t.type}]`).checked=true;
+ theme(t.profile.theme||'lavender');cfg();$('err').textContent='';
+ preview(t);renderList();
+}
+function cfg(){const r=document.querySelector('input[name=rt]:checked').value==='redirect';$('cfg-redirect').classList.toggle('hidden',!r);$('cfg-profile').classList.toggle('hidden',r)}
+function theme(n){$('f-theme').value=n;document.querySelectorAll('.sw').forEach((b,i)=>b.setAttribute('aria-pressed',['lavender','vintage','dark'][i]===n))}
+function touch(){setDirty(true);preview(read())}
+function read(){
+ const g=i=>$(i).value.trim();
+ return{id:cur,name:g('f-name')||'Unnamed item',kind:g('f-kind'),type:document.querySelector('input[name=rt]:checked').value,url:g('f-url'),
+  profile:{name:g('f-pname'),bio:g('f-bio'),theme:$('f-theme').value,link:g('f-link')}};
+}
+$('form').addEventListener('input',e=>{
+ if(e.target.id==='f-url')e.target.value=e.target.value.replace(/^\s*https?:\/\//i,'');
+ cfg();touch();
+});
+
+function preview(t){
+ $('pv-empty').classList.add('hidden');
+ $('pv-url').textContent='cozynfc.io/t/'+t.id.split('-')[1];
+ const r=t.type==='redirect';
+ const p=$('pv-profile');
+ p.className='t-'+t.profile.theme+' flex flex-col items-center text-center p-6 min-h-full';
+ p.classList.toggle('hidden',r);
+ const rd=$('pv-redirect');rd.classList.toggle('hidden',!r);rd.classList.toggle('flex',r);
+ if(r){$('pv-rurl').textContent='https://'+(t.url||'...')}
+ else{
+  $('pv-name').textContent=t.profile.name||'Your name';
+  $('pv-bio').textContent=t.profile.bio||'A line about you';
+  const l=safeUrl(t.profile.link),a=$('pv-link');
+  a.classList.toggle('hidden',!l);if(l)a.href=l;
+ }
+}
+
+function save(){
+ const d=read(),e=$('err');
+ if(d.type==='redirect'&&d.url&&!safeUrl('https://'+d.url)){e.textContent='That link is not a valid web address. Use a format like linkedin.com/in/name.';return}
+ if(d.type==='profile'&&d.profile.link&&!safeUrl(d.profile.link)){e.textContent='The main link must be a normal web address (http or https).';return}
+ e.textContent='';
+ const t=tags.find(x=>x.id===cur);
+ Object.assign(t,{name:d.name,kind:d.kind,type:d.type,url:d.url,profile:d.profile});
+ persist();setDirty(false);$('edit-title').textContent=t.name;renderList();toast('Changes saved');
+}
+function del(){
+ if(!cur||!confirm('Delete this item? Its link will stop working.'))return;
+ tags=tags.filter(t=>t.id!==cur);persist();cur=null;setDirty(false);
+ $('editor').classList.add('hidden');$('pv-redirect').classList.add('hidden');$('pv-profile').classList.add('hidden');
+ $('pv-empty').classList.remove('hidden');$('pv-url').textContent='cozynfc.io/t/...';
+ renderList();toast('Item deleted');
+}
+
+function tap(){
+ const t=tags.find(x=>x.id===cur);
+ if(!t){toast('Choose an item first');return}
+ t.taps=(t.taps||0)+1;persist();renderList();
+ const p=$('phone');p.classList.add('tapping');setTimeout(()=>p.classList.remove('tapping'),300);
+ toast('Tap '+t.taps+' recorded');
+}
+function vcard(){
+ const p=read().profile,l=safeUrl(p.link),v=s=>s.replace(/([,;\\])/g,'\\$1').replace(/\n/g,'\\n');
+ const txt=['BEGIN:VCARD','VERSION:3.0','FN:'+v(p.name||'Contact'),p.bio&&'NOTE:'+v(p.bio),l&&'URL:'+l,'END:VCARD'].filter(Boolean).join('\r\n');
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'text/vcard'}));
+ a.download=(p.name||'contact').replace(/[^\w-]+/g,'_')+'.vcf';a.click();
+ setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Contact file downloaded');
+}
+
+function openM(id){const m=$(id);m.classList.remove('hidden');m.classList.add('flex');const b=m.querySelector('button');b&&b.focus()}
+function closeM(id){
+ const m=$(id);m.classList.add('hidden');m.classList.remove('flex');
+ if(id==='m-enc'){clearTimeout(encT);if(encAc)encAc.abort()}
+}
+document.querySelectorAll('[role=dialog]').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeM(m.id)}));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('[role=dialog]:not(.hidden)').forEach(m=>closeM(m.id))});
+
+async function encode(){
+ if(!cur)return;
+ const url='https://cozynfc.io/t/'+cur.split('-')[1];
+ $('enc-1').classList.remove('hidden');$('enc-2').classList.add('hidden');$('enc-url').textContent=url;
+ openM('m-enc');
+ const done=()=>{if(!$('m-enc').classList.contains('hidden')){$('enc-1').classList.add('hidden');$('enc-2').classList.remove('hidden')}};
+ if('NDEFReader' in window){
+  $('enc-mode').textContent='This writes the link to a real tag. Keep it close until it finishes.';
+  encAc=new AbortController();
+  try{await new NDEFReader().write({records:[{recordType:'url',data:url}]},{signal:encAc.signal});done()}
+  catch(e){if(!$('m-enc').classList.contains('hidden')){closeM('m-enc');toast('Could not write: '+(e.message||e.name))}}
+ }else{
+  $('enc-mode').textContent='This browser cannot write tags (only Chrome on Android can), so this is a simulation.';
+  encT=setTimeout(done,2500);
+ }
+}
+
+window.onload=()=>{
+ renderList();
+ try{if(!sessionStorage.getItem('scope-seen')){sessionStorage.setItem('scope-seen','1');openM('m-scope')}}catch(e){openM('m-scope')}
+};
+</script>
+</body>
+</html>
